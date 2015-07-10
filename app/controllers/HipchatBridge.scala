@@ -11,7 +11,7 @@ class HipchatBridge @Inject() (rooms: Rooms) extends Controller {
   def roomNotification(roomId: Int) = Action(parse.tolerantJson) { implicit request =>
     val message = (request.body \ "Message").as[String]
     rooms.message.call(roomId, "AWS Notifications", message, color = Some(Color.Purple))
-    Ok()
+    Ok
   }
 
 }
