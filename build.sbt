@@ -1,12 +1,21 @@
+
+enablePlugins(PlayScala)
+
 name := """hipchat-sns-bridge"""
 
 organization := "com.teambytes"
 
 version := "git describe --tags --dirty --always".!!.stripPrefix("v").trim
 
-enablePlugins(PlayScala)
-
 scalaVersion := "2.11.7"
+
+dockerRepository := Some("giltcommon")
+
+dockerExposedPorts in Docker := Seq(9000)
+
+dockerExposedVolumes := Seq("/opt/docker/logs")
+
+dockerBaseImage := "java:8-jre"
 
 resolvers ++= Seq(
   Resolver.sonatypeRepo("releases"),
