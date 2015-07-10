@@ -1,1 +1,3 @@
 POST     /hipchat/:roomId                           controllers.HipchatBridge.roomNotification(roomId: Int)
+
+GET      /_internal_/version                        controllers.Internal.version

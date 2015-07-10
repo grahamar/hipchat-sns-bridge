@@ -17,6 +17,12 @@ dockerExposedVolumes := Seq("/opt/docker/logs")
 
 dockerBaseImage := "java:8-jre"
 
+bashScriptExtraDefines ++= Seq(
+  s"""addJava "-Dservice.version=${version.value}"""",
+  """addJava "-Dfile.encoding=UTF8"""",
+  """addJava "-Duser.timezone=GMT""""
+)
+
 resolvers ++= Seq(
   Resolver.sonatypeRepo("releases"),
   Resolver.bintrayRepo("scalaz", "releases"),
