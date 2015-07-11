@@ -27,13 +27,12 @@ resolvers ++= Seq(
   Resolver.sonatypeRepo("releases"),
   Resolver.bintrayRepo("scalaz", "releases"),
   Resolver.bintrayRepo("etaty", "maven"),
-  Resolver.bintrayRepo("dwhjames", "maven"),
-  "Zaneli Repository" at "http://www.zaneli.com/repositories"
+  Resolver.bintrayRepo("dwhjames", "maven")
 )
 
 libraryDependencies ++= Seq(
   ws,
-  "com.zaneli" %% "escalade-hipchat" % "0.0.1"
+  "com.imadethatcow" %% "hipchat-scala" % "0.2"
 )
 
 routesGenerator := InjectedRoutesGenerator
