@@ -5,8 +5,8 @@ import javax.inject.Inject
 import com.zaneli.escalade.hipchat.Rooms
 import com.zaneli.escalade.hipchat.param.Color
 import play.api.libs.concurrent.Execution.Implicits._
-import play.api.Application
-import play.api.libs.json.JsValue
+import play.api.{Logger, Application}
+import play.api.libs.json.{Json, JsValue}
 import play.api.libs.ws.WS
 import play.api.mvc._
 
@@ -15,6 +15,13 @@ import scala.concurrent.Future
 class HipchatBridge @Inject() (rooms: Rooms, app: Application) extends Controller {
 
   def roomNotification(roomId: Int) = Action.async(parse.tolerantJson) { implicit request =>
+    Logger.info(
+      s"""
+        |> ${request.method} ${request.uri}
+        |> ${request.headers.headers.map(kv => s"> ${kv._1}: ${kv._2}").mkString("\n")}
+        |
+        |${Json.prettyPrint(request.body)}
+      """.stripMargin)
     val messageType = (request.body \ "Type").as[String]
     messageType match {
       case "SubscriptionConfirmation" => confirmSnsTopicSubscription(request)
