@@ -32,6 +32,7 @@ resolvers ++= Seq(
 )
 
 libraryDependencies ++= Seq(
+  ws,
   "com.zaneli" %% "escalade-hipchat" % "0.0.1"
 )
 
