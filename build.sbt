@@ -32,7 +32,8 @@ resolvers ++= Seq(
 
 libraryDependencies ++= Seq(
   ws,
-  "io.evanwong.oss" % "hipchat-java" % "0.4.0"
+  "io.evanwong.oss" % "hipchat-java" % "0.4.0",
+  "com.amazonaws" % "aws-java-sdk-autoscaling" % "1.10.4" withSources()
 )
 
 routesGenerator := InjectedRoutesGenerator

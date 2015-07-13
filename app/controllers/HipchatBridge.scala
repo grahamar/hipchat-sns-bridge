@@ -2,17 +2,20 @@ package controllers
 
 import javax.inject.Inject
 
+import com.amazonaws.services.autoscaling.AmazonAutoScaling
+import com.amazonaws.services.autoscaling.model.DescribeAutoScalingGroupsRequest
 import io.evanwong.oss.hipchat.v2.HipChatClient
-import io.evanwong.oss.hipchat.v2.rooms.{MessageFormat, MessageColor}
+import io.evanwong.oss.hipchat.v2.rooms.{MessageColor, MessageFormat}
 import play.api.libs.concurrent.Execution.Implicits._
-import play.api.{Configuration, Logger, Application}
-import play.api.libs.json.{Json, JsValue}
+import play.api.libs.json.{JsValue, Json}
 import play.api.libs.ws.WS
 import play.api.mvc._
+import play.api.{Application, Configuration, Logger}
 
+import scala.collection.JavaConverters._
 import scala.concurrent.Future
 
-class HipchatBridge @Inject() (hipchat: HipChatClient, app: Application, configuration: Configuration) extends Controller {
+class HipchatBridge @Inject() (hipchat: HipChatClient, awsClient: AmazonAutoScaling, app: Application, configuration: Configuration) extends Controller {
 
   def roomNotification(roomId: Int, apiToken: String) = Action.async(parse.tolerantJson) { implicit request =>
     Logger.info(
@@ -30,7 +33,7 @@ class HipchatBridge @Inject() (hipchat: HipChatClient, app: Application, configu
   }
 
   private def notifyHipchatRoom(roomId: Int, apiToken: String, request: Request[JsValue]) = Future {
-    val (message, colour) = buildMessage(request)
+    val (message, colour) = buildMessage(Json.parse((request.body \ "Message").as[String]))
     val notificationBuilder = hipchat.prepareSendRoomNotificationRequestBuilder(roomId.toString, message, apiToken)
     notificationBuilder.setColor(colour)
     notificationBuilder.setMessageFormat(MessageFormat.TEXT)
@@ -44,30 +47,34 @@ class HipchatBridge @Inject() (hipchat: HipChatClient, app: Application, configu
     WS.url(subscribeUrl)(app).get().map(_ => Ok(""))
   }
 
-  private def buildMessage(request: Request[JsValue]): (String, MessageColor) = {
+  private def buildMessage(msgJson: JsValue): (String, MessageColor) = {
     //AutoScaling Messages have a 'cause' section in the message json
-    val cause = (request.body \ "Cause").asOpt[String]
+    val cause = (msgJson \ "Cause").asOpt[String]
     // Pretty Alarm messages received from SNS
-    val alarmName = (request.body \ "AlarmName").asOpt[String]
+    val alarmName = (msgJson \ "AlarmName").asOpt[String]
 
     if(cause.isDefined) {
-      val autoScalingGroupName = (request.body \ "AutoScalingGroupName").as[String]
-      val description = (request.body \ "Description").as[String]
-      s"$autoScalingGroupName - $description - ${cause.get.substring(0, cause.get.indexOf('.'))}" -> MessageColor.PURPLE
+      val autoScalingGroupName = (msgJson \ "AutoScalingGroupName").as[String]
+      val description = (msgJson \ "Description").as[String]
+      // Elastic beanstalk deployed apps have generated names, but are tagged with a human-readable 'Name', try use that.
+      val asGroupDescription = awsClient.describeAutoScalingGroups(new DescribeAutoScalingGroupsRequest().withAutoScalingGroupNames(autoScalingGroupName))
+      val asGroupNameTag = asGroupDescription.getAutoScalingGroups.asScala.head.getTags.asScala.find(_.getKey == "Name")
+      val serviceName = asGroupNameTag.map(_.getValue).getOrElse(autoScalingGroupName)
+      s"$serviceName - $description - ${cause.get.substring(0, cause.get.indexOf('.'))}" -> MessageColor.PURPLE
     } else if (alarmName.isDefined) {
-      val newStateValue = (request.body \ "NewStateValue").as[String]
-      val newStateReason = (request.body \ "NewStateReason").as[String]
-      val stateChangeTime = (request.body \ "StateChangeTime").as[String]
+      val newStateValue = (msgJson \ "NewStateValue").as[String]
+      val newStateReason = (msgJson \ "NewStateReason").as[String]
+      val stateChangeTime = (msgJson \ "StateChangeTime").as[String]
       s"$newStateValue - ${alarmName.get} - $newStateReason - $stateChangeTime" -> MessageColor.PURPLE
     } else {
-      val event = (request.body \ "Event").asOpt[String]
+      val event = (msgJson \ "Event").asOpt[String]
       val colour = if(event.isDefined && event.exists(_.contains("EC2_INSTANCE_LAUNCH"))) {
         MessageColor.GREEN
       } else if (event.isDefined && event.exists(_.contains("EC2_INSTANCE_TERMINATE"))) {
         MessageColor.RED
       } else MessageColor.PURPLE
 
-      (request.body \ "Message").as[String] -> colour
+      Json.stringify(msgJson) -> colour
     }
   }
 
