@@ -3,7 +3,7 @@ package modules
 import com.imadethatcow.hipchat.rooms.RoomNotifier
 import play.api.inject.Module
 import play.api.{Configuration, Environment}
-import lib.Contexts.notifyerExecutionContext
+import play.api.libs.concurrent.Execution.Implicits._
 
 class HipchatModule extends Module {
   def bindings(environment: Environment, configuration: Configuration) = {

@@ -5,7 +5,7 @@ import javax.inject.Inject
 import com.imadethatcow.hipchat.common.enums.{MessageFormat, Color}
 import com.imadethatcow.hipchat.common.enums.Color._
 import com.imadethatcow.hipchat.rooms.RoomNotifier
-import lib.Contexts.notifyerExecutionContext
+import play.api.libs.concurrent.Execution.Implicits._
 import play.api.{Logger, Application}
 import play.api.libs.json.{Json, JsValue}
 import play.api.libs.ws.WS
