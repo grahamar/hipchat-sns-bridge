@@ -33,7 +33,9 @@ resolvers ++= Seq(
 libraryDependencies ++= Seq(
   ws,
   "io.evanwong.oss" % "hipchat-java" % "0.4.0",
-  "com.amazonaws" % "aws-java-sdk-autoscaling" % "1.10.4" withSources()
+  "com.amazonaws" % "aws-java-sdk-autoscaling" % "1.10.4" withSources(),
+  "org.scalatest" %% "scalatest" % "2.2.1" % "test",
+  "org.scalatestplus" %% "play" % "1.4.0-M3" % "test"
 )
 
 routesGenerator := InjectedRoutesGenerator
