@@ -32,7 +32,7 @@ resolvers ++= Seq(
 
 libraryDependencies ++= Seq(
   ws,
-  "com.imadethatcow" %% "hipchat-scala" % "0.2"
+  "io.evanwong.oss" % "hipchat-java" % "0.4.0"
 )
 
 routesGenerator := InjectedRoutesGenerator
