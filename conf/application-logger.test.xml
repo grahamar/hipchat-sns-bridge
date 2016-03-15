@@ -1,0 +1,21 @@
+<configuration debug="true">
+
+    <conversionRule conversionWord="coloredLevel" converterClass="play.api.Logger$ColoredLevel" />
+
+    <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%coloredLevel %logger{15} - %message%n%xException</pattern>
+        </encoder>
+    </appender>
+
+    <!-- Affects loggers within the application -->
+    <logger name="play" level="DEBUG" />
+    <logger name="application" level="DEBUG" />
+    <logger name="requests" level="DEBUG" />
+    <logger name="com.teambytes.hipchat.sns.bridge" level="DEBUG" />
+
+    <root level="INFO">
+        <appender-ref ref="STDOUT" />
+    </root>
+
+</configuration>

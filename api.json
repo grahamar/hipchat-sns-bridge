@@ -1,0 +1,186 @@
+{
+  "name": "hipchat-sns-bridge",
+  "description": "Hipchat to Amazon SNS bridge.",
+  "base_url": "http://hipchat-sns-bridge.common.giltaws.com",
+  "info": {},
+  "apidoc": { "version": "0.9.30" },
+  "unions": {},
+  "imports": [],
+  "headers": [],
+  "enums": {
+    "hipchat_scope": {
+      "description": "Your add-on must declare the scopes it requires based on which API endpoints it needs to use, via its descriptor.",
+      "values": [
+        { "name": "send_message" },
+        { "name": "send_notification" }
+      ]
+    }
+  },
+  "models": {
+    "hipchat_install_data": {
+      "fields": [
+        { "name": "capabilitiesUrl", "type": "string", "description": "" },
+        { "name": "oauthId", "type": "string", "description": "" },
+        { "name": "oauthSecret", "type": "string", "description": "" },
+        { "name": "groupId", "type": "long", "description": "" },
+        { "name": "roomId", "type": "string", "description": "", "required": false }
+      ]
+    },
+    "hipchat_capabilities_descriptor": {
+      "fields": [
+        { "name": "name", "type": "string", "description": "The display name of this application." },
+        { "name": "description", "type": "string", "description": "A short description of this application." },
+        { "name": "key", "type": "string", "description": "The marketplace integration key that uniquely identifies the application, if registered." },
+        { "name": "apiVersion", "type": "string", "description": "The HipChat Connect API version used by this integration. Defaults to 1:1.", "required": false },
+        { "name": "capabilities", "type": "hipchat_capabilities", "description": "The set of capabilities this application supports.", "required": false },
+        { "name": "links", "type": "hipchat_links", "description": "URLs to retrieve this and related integration information." },
+        { "name": "vendor", "type": "hipchat_vendor", "description": "The vendor that maintains this application.", "required": false }
+      ]
+    },
+    "hipchat_capabilities": {
+      "fields": [
+        { "name": "configurable", "type": "hipchat_configuration_page", "description": "Most integrations will need to be configured in order to work correctly. For this purpose, an integration can expose a 'configurable' capability that provides an HTML page to be included as a panel in the configuration dialog.", "required": false },
+        { "name": "hipchatApiConsumer", "type": "hipchat_api_consumer", "description": "The ability to consume the HipChat API.", "required": false },
+        { "name": "installable", "type": "hipchat_installable", "description": "The capability of receiving a synchronous installation callback during integration installation.", "required": false },
+        { "name": "oauth2Provider", "type": "hipchat_oauth2_provider", "description": "The capability of providing and accepting OAuth 2 tokens for authentication.", "required": false }
+      ]
+    },
+    "hipchat_oauth2_provider": {
+      "fields": [
+        { "name": "tokenUrl", "type": "string", "description": "The OAuth 2 token endpoint for retrieving an access token.", "required": false },
+        { "name": "authorizationUrl", "type": "string", "description": "The OAuth 2 endpoint to direct browsers to in order to receive an authorization code that can be later exchanged using the token URL for an access token.", "required": false }
+      ]
+    },
+    "hipchat_configuration_page": {
+      "fields": [
+        { "name": "allowAccessToRoomAdmins", "type": "string", "description": "If the add-on is installed globally, this property can allow the configuration page to be accessed in the room administration pages making it possible to have room specific configuration for the global add-on. This is only valid for globally installed add-ons.", "required": false },
+        { "name": "url", "type": "string", "description": "The URL to embed into a configure dialog via an iframe." }
+      ]
+    },
+    "hipchat_installable": {
+      "fields": [
+        { "name": "callbackUrl", "type": "string", "description": "The URL to receive a confirmation of an integration installation.", "required": false },
+        { "name": "installedUrl", "type": "string", "description": "The URL HipChat will redirect to post-installation.", "required": false },
+        { "name": "allowGlobal", "type": "boolean", "description": "Whether the integration can be installed globally or not.", "required": false },
+        { "name": "allowRoom", "type": "boolean", "description": "Whether the integration can be installed in a room or not.", "required": false }
+      ]
+    },
+    "hipchat_api_consumer": {
+      "fields": [
+        { "name": "scopes", "type": "[hipchat_scope]", "description": "An array of scopes that are required to consume the HipChat API." },
+        { "name": "fromName", "type": "string", "description": "The name that messages should be from when sent from the integration itself.", "required": false }
+      ]
+    },
+    "hipchat_links": {
+      "fields": [
+        { "name": "homepage", "type": "string", "description": "The URL to human-viewable home page of this integration.", "required": false },
+        { "name": "api", "type": "string", "description": "The URL to the REST API root.", "required": false },
+        { "name": "self", "type": "string", "description": "The URL to this descriptor." }
+      ]
+    },
+    "hipchat_vendor": {
+      "fields": [
+        { "name": "name", "type": "string", "description": "The vendor display name." },
+        { "name": "url", "type": "string", "description": "The vendor's home page URL." }
+      ]
+    },
+    "sns_notification": {
+      "fields": [
+        { "name": "Type", "type": "string", "description": "The type of message. For a unsubscribe confirmation, the type is UnsubscribeConfirmation." },
+        { "name": "MessageId", "type": "string", "description": "A Universally Unique Identifier, unique for each message published. For a message that Amazon SNS resends during a retry, the message ID of the original message is used." },
+        { "name": "TopicArn", "type": "string", "description": "The Amazon Resource Name (ARN) for the topic that this endpoint has been unsubscribed from." },
+        { "name": "Message", "type": "string", "description": "A string that describes the message." },
+        { "name": "Timestamp", "type": "string", "description": "The time (GMT) when the unsubscribe confirmation was sent." },
+        { "name": "SignatureVersion", "type": "string", "description": "Version of the Amazon SNS signature used." },
+        { "name": "Signature", "type": "string", "description": "Base64-encoded 'SHA1withRSA' signature of the Message, MessageId, Type, Timestamp, and TopicArn values." },
+        { "name": "SigningCertURL", "type": "string", "description": "The URL to the certificate that was used to sign the message." },
+        { "name": "Token", "type": "string", "description": "A value you can use with the ConfirmSubscription action to re-confirm the subscription. Alternatively, you can simply visit the SubscribeURL.", "required": false },
+        { "name": "Subject", "type": "string", "description": "The Subject parameter specified when the notification was published to the topic. Note that this is an optional parameter. If no Subject was specified, then this name/value pair does not appear in this JSON document.", "required": false },
+        { "name": "SubscribeURL", "type": "string", "description": "The URL that you must visit in order to re-confirm the subscription. Alternatively, you can instead use the Token with the ConfirmSubscription action to re-confirm the subscription.", "required": false },
+        { "name": "UnsubscribeURL", "type": "string", "description": "A URL that you can use to unsubscribe the endpoint from this topic. If you visit this URL, Amazon SNS unsubscribes the endpoint and stops sending notifications to this endpoint.", "required": false }
+      ]
+    },
+    "service_info": {
+      "plural": "service_info",
+      "fields": [
+        { "name": "name", "type": "string", "description": "Name of this service." },
+        { "name": "version", "type": "string", "description": "Version of this service." },
+        { "name": "scala_version", "type": "string", "description": "Version of Scala this service is using." },
+        { "name": "sbt_version", "type": "string", "description": "Version of SBT used to build this service." },
+        { "name": "build_time", "type": "date-time-iso8601", "description": "Time the service was built at." }
+      ]
+    },
+    "error": {
+      "description": "A request semantic failure reason.",
+      "fields": [
+        { "name": "description", "type": "string" }
+      ]
+    }
+  },
+  "resources": {
+    "service_info": {
+      "path": "/info",
+      "operations": [
+        {
+          "method": "GET",
+          "responses": {
+            "200": { "type": "service_info" }
+          }
+        }
+      ]
+    },
+    "sns_notification": {
+      "path": "/hipchat/room/:roomId/notification",
+      "operations": [
+        {
+          "method": "POST",
+          "body": { "type": "sns_notification" },
+          "responses": {
+            "200": { "type": "string" }
+          }
+        }
+      ]
+    },
+    "hipchat_capabilities_descriptor": {
+      "path": "/hipchat/capabilities",
+      "operations": [
+        {
+          "method": "GET",
+          "parameters": [
+            { "name": "redirect_to_hipchat_install", "type": "boolean", "description": "Whether to redirect to Hipchat install with Base64 encoded data.", "default": false }
+          ],
+          "responses": {
+            "200": { "type": "hipchat_capabilities_descriptor" }
+          }
+        }
+      ]
+    },
+    "hipchat_install_data": {
+      "path": "/hipchat/installable",
+      "operations": [
+        {
+          "method": "GET",
+          "parameters": [
+            { "name": "installable_url", "type": "string" },
+            { "name": "redirect_url", "type": "string" }
+          ],
+          "responses": {
+            "200": { "type": "hipchat_capabilities_descriptor" }
+          }
+        }, {
+          "method": "POST",
+          "body": { "type": "hipchat_install_data" },
+          "responses": {
+            "200": { "type": "unit" }
+          }
+        }, {
+          "method": "DELETE",
+          "path": "/:oauthId",
+          "responses": {
+            "200": { "type": "unit" }
+          }
+        }
+      ]
+    }
+  }
+}

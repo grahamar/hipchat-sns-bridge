@@ -1,0 +1,30 @@
+<configuration debug="true">
+
+    <conversionRule conversionWord="coloredLevel" converterClass="play.api.Logger$ColoredLevel" />
+
+    <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>logs/application.log</file>
+        <encoder>
+            <pattern>%date{ISO8601} - [%level] - [${APP_VERSION}] - [%thread] %logger{36} - %message%n%ex</pattern>
+        </encoder>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <!-- rollover daily -->
+            <fileNamePattern>logs/application-%d{yyyy-MM-dd}.%i.log</fileNamePattern>
+            <maxHistory>2</maxHistory>
+            <timeBasedFileNamingAndTriggeringPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP">
+                <maxFileSize>100MB</maxFileSize>
+            </timeBasedFileNamingAndTriggeringPolicy>
+        </rollingPolicy>
+    </appender>
+
+    <!-- Affects loggers within the application -->
+    <logger name="play" level="DEBUG" />
+    <logger name="application" level="DEBUG" />
+    <logger name="requests" level="DEBUG" />
+    <logger name="com.teambytes.hipchat.sns.bridge" level="DEBUG" />
+
+    <root level="WARN">
+        <appender-ref ref="FILE" />
+    </root>
+
+</configuration>
