@@ -146,6 +146,9 @@
       "operations": [
         {
           "method": "GET",
+          "parameters": [
+            { "name": "redirect_to_hipchat_install", "type": "boolean", "description": "Whether to redirect to Hipchat install with Base64 encoded data.", "default": false }
+          ],
           "responses": {
             "200": { "type": "hipchat_capabilities_descriptor" }
           }
@@ -156,6 +159,15 @@
       "path": "/hipchat/installable",
       "operations": [
         {
+          "method": "GET",
+          "parameters": [
+            { "name": "installable_url", "type": "string" },
+            { "name": "redirect_url", "type": "string" }
+          ],
+          "responses": {
+            "200": { "type": "hipchat_capabilities_descriptor" }
+          }
+        }, {
           "method": "POST",
           "body": { "type": "hipchat_install_data" },
           "responses": {

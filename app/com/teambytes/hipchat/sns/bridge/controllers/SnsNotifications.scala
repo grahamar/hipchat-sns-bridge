@@ -2,10 +2,13 @@ package com.teambytes.hipchat.sns.bridge.controllers
 
 import javax.inject.{Inject, Singleton}
 
-import com.imadethatcow.hipchat.common.enums.{MessageFormat, Color}
+import com.imadethatcow.hipchat.common.enums.{Color, MessageFormat}
 import com.imadethatcow.hipchat.rooms.RoomNotifier
-import com.teambytes.hipchat.sns.bridge.util.SnsSignatureUtils
+import com.teambytes.hipchat.sns.bridge.data.TenantStore
+import com.teambytes.hipchat.sns.bridge.util.{SnsNotificationUtils, SnsSignatureUtils}
+import com.teambytes.hipchat.sns.bridge.v0.models.json._
 import com.teambytes.hipchat.sns.bridge.v0.models.{Error, SnsNotification}
+import play.api.Logger
 import play.api.cache.Cached
 import play.api.libs.concurrent.Execution.Implicits.defaultContext
 import play.api.libs.json.{JsError, Json}
@@ -15,7 +18,7 @@ import play.api.mvc._
 import scala.concurrent.Future
 
 @Singleton
-class SnsNotifications @Inject()(notifier: RoomNotifier, ws: WSClient, cached: Cached) extends Controller {
+class SnsNotifications @Inject()(ws: WSClient, cached: Cached, store: TenantStore) extends Controller {
 
   /**
     * Cache 200 OK responses for 'roomId.messageId' as SNS will retry. From the docs:
@@ -37,7 +40,10 @@ class SnsNotifications @Inject()(notifier: RoomNotifier, ws: WSClient, cached: C
   def post(roomId: String) = cached.status((rh: RequestHeader) => s"$roomId.${rh.headers("x-amz-sns-message-id")}", 200, 150) {
     Action.async(parse.tolerantJson) { implicit request =>
       request.body.validate[SnsNotification].fold(
-        errors => Future.successful(BadRequest(Json.toJson(Error(JsError.toJson(errors).toString)))),
+        errors => {
+          Logger.warn(s"Error parsing SNS message: ${JsError.toJson(errors).toString}")
+          Future.successful(BadRequest(Json.toJson(Error(JsError.toJson(errors).toString))))
+        },
         snsNotification => handleSnsMessage(roomId, snsNotification)
       )
     }
@@ -48,43 +54,74 @@ class SnsNotifications @Inject()(notifier: RoomNotifier, ws: WSClient, cached: C
     if (snsMessage.SignatureVersion == "1") {
       if (SnsSignatureUtils.isValidSnsMessage(snsMessage)) {
         snsMessage.Type match {
-          case "Notification" => handleSnsNotification(roomId, snsMessage)
-          case "SubscriptionConfirmation" => handleSnsSubscription(roomId, snsMessage)
-          case "UnsubscribeConfirmation" => handleSnsUnsubscribe(roomId, snsMessage)
-          case other => Future.successful(BadRequest(Json.toJson(Error(s"Unsupported SNS message type"))))
+          case "Notification" =>
+            Logger.info(s"Handling SNS notification for hipchat room [$roomId] and topic [${snsMessage.TopicArn}]")
+            handleSnsNotification(roomId, snsMessage)
+
+          case "SubscriptionConfirmation" =>
+            Logger.info(s"Handling SNS confirmation for hipchat room [$roomId] and topic [${snsMessage.TopicArn}]")
+            handleSnsSubscription(roomId, snsMessage)
+
+          case "UnsubscribeConfirmation" =>
+            Logger.info(s"Handling SNS unsubscribe for hipchat room [$roomId] and topic [${snsMessage.TopicArn}]")
+            handleSnsUnsubscribe(roomId, snsMessage)
+
+          case other =>
+            Logger.warn(s"Unsupported SNS message type: [$other]")
+            Future.successful(BadRequest(Json.toJson(Error(s"Unsupported SNS message type"))))
         }
       } else {
+        Logger.warn(s"Invalid Signature [${snsMessage.Signature}]")
         Future.successful(BadRequest(Json.toJson(Error(s"Invalid Signature"))))
       }
     } else {
+      Logger.warn(s"Invalid Signature Version [${snsMessage.SignatureVersion}]")
       Future.successful(BadRequest(Json.toJson(Error(s"Invalid Signature Version '${snsMessage.SignatureVersion}'"))))
     }
   }
 
   private def handleSnsSubscription[T](roomId: String, snsNotification: SnsNotification)(implicit request: Request[T]): Future[Result] = {
     snsNotification.SubscribeURL.map { subscribeURL =>
+      Logger.info(s"Successfully subscribed hipchat room [$roomId] to topic [${snsNotification.TopicArn}]")
       ws.url(subscribeURL).get().map(_ => Ok(Json.toJson("Subscribed")))
-    }.getOrElse(Future.successful(BadRequest(Json.toJson("No subscription URL found."))))
+    }.getOrElse {
+      Logger.warn(s"Unable to subscribe without subscription URL; Room [$roomId] to topic [${snsNotification.TopicArn}]")
+      Future.successful(BadRequest(Json.toJson("No subscription URL found.")))
+    }
   }
 
   private def handleSnsNotification[T](roomId: String, snsNotification: SnsNotification)(implicit request: Request[T]): Future[Result] = {
-    val msg =
-      s"""<p>
-         |${snsNotification.Subject.map(sbj => s"""<b>$sbj</b><br/>""")}
-         |<i>${snsNotification.TopicArn}</i><br/>
-         |${snsNotification.Message}
-         |</p>
+    val messageString = SnsNotificationUtils.readNotificationMessage(snsNotification.Message)
+
+    val msg = s"""<p>
+        |${snsNotification.Subject.map(sbj => s"""<b>$sbj</b><br/>""")}
+        |<i>${snsNotification.TopicArn}</i><br/>
+        |$messageString
+        |</p>
        """.stripMargin
 
-    notifier.sendNotification(
-      roomIdOrName = roomId,
-      message = snsNotification.Message,
-      color = Color.purple,
-      notify = false,
-      messageFormat = MessageFormat.html
-    ).map {
-      case true => Ok(Json.toJson("Successfully posted hipchat message."))
-      case false => BadGateway(Json.toJson("Failed to send hipchat message."))
+    store.listTenants().flatMap { tenants =>
+      tenants.headOption.map { tenant =>
+        store.getToken(tenant).flatMap { token =>
+          new RoomNotifier(token.access_token).sendNotification(
+            roomIdOrName = roomId,
+            message = snsNotification.Message,
+            color = Color.purple,
+            notify = false,
+            messageFormat = MessageFormat.html
+          ).map {
+            case true =>
+              Logger.info(s"Successfully posted message to hipchat room [$roomId] from topic [${snsNotification.TopicArn}]")
+              Ok(Json.toJson("Successfully posted hipchat message."))
+            case false =>
+              Logger.warn(s"Failed to post message to hipchat room [$roomId] from topic [${snsNotification.TopicArn}]")
+              BadGateway(Json.toJson("Failed to send hipchat message."))
+          }
+        }
+      }.getOrElse {
+        Logger.warn(s"No tenant found, have you installed the app with hipchat?")
+        Future.successful(UnprocessableEntity(Json.toJson("No tenant found, have you installed the app with hipchat?")))
+      }
     }
   }
 
